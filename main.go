@@ -28,4 +28,12 @@ func main() {
 		fmt.Println(err)
 	}
 	fmt.Printf("%s\n", jsonocsp)
+
+	redirs := httpheaders.GetRedirects("http://ssl.nu")
+	jsonredirs, err := json.MarshalIndent(redirs, "", "   ")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%s\n", jsonredirs)
+
 }
