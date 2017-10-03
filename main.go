@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/binaryfigments/goharverst/checks/email"
 	"github.com/binaryfigments/goharverst/checks/http"
 	"github.com/binaryfigments/goharverst/checks/pki"
 )
@@ -36,4 +37,11 @@ func main() {
 	}
 	fmt.Printf("%s\n", jsonredirs)
 
+	mailmx := harverstmail.GetMX("networking4all.com", "8.8.8.8")
+
+	jsonmailmx, err := json.MarshalIndent(mailmx, "", "   ")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%s\n", jsonmailmx)
 }
