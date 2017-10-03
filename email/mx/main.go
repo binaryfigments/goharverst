@@ -1,24 +1,24 @@
-package harverstmail
+package emailmx
 
 import (
 	"github.com/miekg/dns"
 )
 
-// EmailMX struct
-type EmailMX struct {
-	Domain       string       `json:"domain,omitempty"`
-	Records      []*MXRecords `json:"records,omitempty"`
-	Error        string       `json:"error,omitempty"`
-	ErrorMessage string       `json:"errormessage,omitempty"`
+// Data struct
+type Data struct {
+	Domain       string     `json:"domain,omitempty"`
+	Records      []*Records `json:"records,omitempty"`
+	Error        string     `json:"error,omitempty"`
+	ErrorMessage string     `json:"errormessage,omitempty"`
 }
 
-type MXRecords struct {
+type Records struct {
 	Server     string `json:"server,omitempty"`
 	Preference uint16 `json:"preference,omitempty"`
 }
 
-func GetMX(domain string, nameserver string) *EmailMX {
-	r := new(EmailMX)
+func Get(domain string, nameserver string) *Data {
+	r := new(Data)
 	r.Domain = domain
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(domain), dns.TypeMX)
@@ -31,7 +31,7 @@ func GetMX(domain string, nameserver string) *EmailMX {
 	}
 	for _, ain := range in.Answer {
 		if a, ok := ain.(*dns.MX); ok {
-			records := new(MXRecords)
+			records := new(Records)
 			records.Server = a.Mx
 			records.Preference = a.Preference
 			r.Records = append(r.Records, records)

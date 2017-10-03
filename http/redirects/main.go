@@ -1,4 +1,4 @@
-package httpheaders
+package httpredirects
 
 import (
 	"net/http"
