@@ -24,7 +24,6 @@ func main() {
 	go jsonize(emailmx.Get("networking4all.com", "8.8.8.8"))
 	go jsonize(dnssoa.Get("ssl.nu", "8.8.8.8"))
 
-	// go jsonize(pkicertificate.Get("www.ssl.nu"))
 	certdata := pkicertificate.Get("www.ssl.nu")
 	json, err := json.MarshalIndent(certdata, "", "  ")
 	if err != nil {
