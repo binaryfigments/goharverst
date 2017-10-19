@@ -8,6 +8,7 @@ import (
 	"github.com/binaryfigments/goharverst/email/mx"
 	"github.com/binaryfigments/goharverst/http/headers"
 	"github.com/binaryfigments/goharverst/http/redirects"
+	"github.com/binaryfigments/goharverst/pki/certificate"
 	"github.com/binaryfigments/goharverst/pki/ocsp"
 )
 
@@ -17,39 +18,26 @@ func main() {
 	Header := "Server"
 	Method := "GET"
 
-	httpserver := httpheaders.GetHTTPHeader("https://"+URL, Header, Method)
+	go jsonize(httpredirects.GetRedirects("http://ssl.nu"))
+	go jsonize(pkiocsp.Run(URL))
+	go jsonize(httpheaders.GetHTTPHeader("https://"+URL, Header, Method))
+	go jsonize(emailmx.Get("networking4all.com", "8.8.8.8"))
+	go jsonize(dnssoa.Get("ssl.nu", "8.8.8.8"))
 
-	jsonserver, err := json.MarshalIndent(httpserver, "", "   ")
+	// go jsonize(pkicertificate.Get("www.ssl.nu"))
+	certdata := pkicertificate.Get("www.ssl.nu")
+	json, err := json.MarshalIndent(certdata, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf("%s\n", jsonserver)
+	fmt.Printf("%s\n", json)
 
-	ocsp := pkiocsp.Run(URL)
-	jsonocsp, err := json.MarshalIndent(ocsp, "", "   ")
+}
+
+func jsonize(data interface{}) {
+	json, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf("%s\n", jsonocsp)
-
-	redirs := httpredirects.GetRedirects("http://ssl.nu")
-	jsonredirs, err := json.MarshalIndent(redirs, "", "   ")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("%s\n", jsonredirs)
-
-	mailmx := emailmx.Get("networking4all.com", "8.8.8.8")
-	jsonmailmx, err := json.MarshalIndent(mailmx, "", "   ")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("%s\n", jsonmailmx)
-
-	getsoa := dnssoa.Get("ssl.nu", "8.8.8.8")
-	jsongetsoa, err := json.MarshalIndent(getsoa, "", "   ")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("%s\n", jsongetsoa)
+	fmt.Printf("%s\n", json)
 }

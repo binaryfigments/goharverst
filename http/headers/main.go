@@ -86,3 +86,45 @@ func GetHTTPHeader(checkurl string, header string, method string) *HTTPHeaders {
 	defer resp.Body.Close()
 	return r
 }
+
+/*
+
+func returnHeaders(fqdn string, scheme string) ResponseHeaders {
+	// headers
+	var result string
+	var resultmessage string
+
+	req, err := http.NewRequest("HEAD", scheme+"://"+fqdn, nil)
+	req.Header.Add("User-Agent", "ocsr.nl Checker")
+	if err != nil {
+		log.Fatalln(err)
+		result = "FAILED"
+		resultmessage = "Could not get response headers. (1)"
+		checkResult := ResponseHeaders{
+			Result:        result,
+			ResultMessage: resultmessage,
+		}
+		return checkResult
+	}
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		log.Fatalln(err)
+
+		result = "FAILED"
+		resultmessage = "Could not get response headers. (2)"
+		checkResult := ResponseHeaders{
+			Result:        result,
+			ResultMessage: resultmessage,
+		}
+		return checkResult
+	}
+	resp.Body.Close()
+
+	result = "OK"
+	checkResult := ResponseHeaders{
+		Result:  result,
+		Headers: resp.Header,
+	}
+	return checkResult
+}
+*/
