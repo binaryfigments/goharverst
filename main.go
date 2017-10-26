@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/binaryfigments/goharverst/dns/soa"
-	"github.com/binaryfigments/goharverst/email/mx"
-	"github.com/binaryfigments/goharverst/email/spf"
-	"github.com/binaryfigments/goharverst/http/headers"
-	"github.com/binaryfigments/goharverst/http/redirects"
-	"github.com/binaryfigments/goharverst/pki/ocsp"
+	"github.com/binaryfigments/goharvest/dns/soa"
+	"github.com/binaryfigments/goharvest/email/mx"
+	"github.com/binaryfigments/goharvest/email/spf"
+	"github.com/binaryfigments/goharvest/http/headers"
+	"github.com/binaryfigments/goharvest/http/redirects"
+	"github.com/binaryfigments/goharvest/pki/ocsp"
 )
 
 func main() {

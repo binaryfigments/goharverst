@@ -1,2 +1,2 @@
-# goharverst
-Harverst data with Go
+# goharvest
+Harvest data with Go
