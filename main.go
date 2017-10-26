@@ -6,9 +6,9 @@ import (
 
 	"github.com/binaryfigments/goharverst/dns/soa"
 	"github.com/binaryfigments/goharverst/email/mx"
+	"github.com/binaryfigments/goharverst/email/spf"
 	"github.com/binaryfigments/goharverst/http/headers"
 	"github.com/binaryfigments/goharverst/http/redirects"
-	"github.com/binaryfigments/goharverst/pki/certificate"
 	"github.com/binaryfigments/goharverst/pki/ocsp"
 )
 
@@ -25,9 +25,17 @@ func main() {
 	go jsonize(dnssoa.Get("ssl.nu", "8.8.8.8"))
 
 	// go jsonize(pkicertificate.Get("www.ssl.nu"))
+	/*
+		certdata := pkicertificate.Get("www.ssl.nu")
+		json, err := json.MarshalIndent(certdata, "", "  ")
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Printf("%s\n", json)
+	*/
+	spfdata := emailspf.Get("networking4all.com", "8.8.8.8")
 
-	certdata := pkicertificate.Get("www.ssl.nu")
-	json, err := json.MarshalIndent(certdata, "", "  ")
+	json, err := json.MarshalIndent(spfdata, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
