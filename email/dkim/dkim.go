@@ -1,7 +1,3 @@
-// Do lookup _domainkey.example.org
-// if exists -----> DNS response: NOERROR
-// if not exists -> DNS response: NXDOMAIN
-
 package emaildkim
 
 import (
@@ -19,6 +15,11 @@ type Data struct {
 	ErrorMessage string `json:"errormessage,omitempty"`
 }
 
+// Do lookup _domainkey.example.org
+// if exists -----> DNS response: NOERROR
+// if not exists -> DNS response: NXDOMAIN
+
+// Get function of this package to get the DKIM record
 func Get(domain string, nameserver string) *Data {
 	r := new(Data)
 
