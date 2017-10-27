@@ -8,6 +8,7 @@ import (
 	"github.com/binaryfigments/goharvest/email/dkim"
 	"github.com/binaryfigments/goharvest/email/dmarc"
 	"github.com/binaryfigments/goharvest/email/mx"
+	"github.com/binaryfigments/goharvest/email/spf"
 	"github.com/binaryfigments/goharvest/http/headers"
 	"github.com/binaryfigments/goharvest/http/redirects"
 	"github.com/binaryfigments/goharvest/pki/certificate"
@@ -29,7 +30,7 @@ func main() {
 	go jsonize(emaildkim.Get("networking4all.net", "8.8.8.8"))
 	go jsonize(emaildmarc.Get("zwdelta.nl", "8.8.8.8"))
 
-	testdata := emaildmarc.Get("ncsc.nl", "8.8.8.8")
+	testdata := emailspf.Get("ncsc.nl", "8.8.8.8")
 	json, err := json.MarshalIndent(testdata, "", "  ")
 	if err != nil {
 		fmt.Println(err)
