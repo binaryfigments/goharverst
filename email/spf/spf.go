@@ -1,31 +1,34 @@
 package emailspf
 
 import (
-	"fmt"
-	"net"
 	"strings"
 
 	"github.com/miekg/dns"
+	"golang.org/x/net/publicsuffix"
 )
 
 // Data struct
 type Data struct {
-	Domain       string     `json:"domain,omitempty"`
-	Records      []*Records `json:"records,omitempty"`
-	Error        string     `json:"error,omitempty"`
-	ErrorMessage string     `json:"errormessage,omitempty"`
-}
-
-type Records struct {
-	SPF string `json:"spf,omitempty"`
+	Record       string   `json:"domain,omitempty"`
+	SPF          []string `json:"spf,omitempty"`
+	Error        string   `json:"error,omitempty"`
+	ErrorMessage string   `json:"errormessage,omitempty"`
 }
 
 func Get(domain string, nameserver string) *Data {
 	r := new(Data)
-	r.Domain = domain
+
+	domain, err := publicsuffix.EffectiveTLDPlusOne(domain)
+	if err != nil {
+		r.Error = "Failed"
+		r.ErrorMessage = err.Error()
+		return r
+	}
+	r.Record = domain
 
 	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn(domain), dns.TypeTXT)
+	m.SetQuestion(dns.Fqdn(r.Record), dns.TypeTXT)
+	m.SetEdns0(4096, true)
 	m.MsgHdr.RecursionDesired = true
 	c := new(dns.Client)
 	in, _, err := c.Exchange(m, nameserver+":53")
@@ -35,52 +38,32 @@ func Get(domain string, nameserver string) *Data {
 		return r
 	}
 
-	for _, ain := range in.Answer {
-		if a, ok := ain.(*dns.TXT); ok {
-			records := new(Records)
-			SPFrecord := strings.Join(a.Txt, " ")
-			if strings.HasPrefix(SPFrecord, "v=spf1") == true {
-				// records.SPF = a.Txt
-				records.SPF = SPFrecord
-				r.Records = append(r.Records, records)
+	switch rcode := in.MsgHdr.Rcode; rcode {
+	case dns.RcodeSuccess:
+		for _, ain := range in.Answer {
+			if a, ok := ain.(*dns.TXT); ok {
+
+				dmarcrecord := strings.Join(a.Txt, " ")
+				if caseInsenstiveContains(dmarcrecord, "v=spf1") == true {
+					r.SPF = append(r.SPF, dmarcrecord)
+				}
+
 			}
-
 		}
-	}
-	return r
-}
-
-func Get2(domain string) *Data {
-	r := new(Data)
-	r.Domain = domain
-	dnstxt, err := net.LookupTXT(domain)
-	if err != nil {
+	default:
 		r.Error = "Failed"
-		r.ErrorMessage = err.Error()
+		r.ErrorMessage = "No DMARC records."
 		return r
 	}
 
-	// fmt.Println(err)
-	// fmt.Println(txt)
-	records := new(Records)
-
-	for i := 0; i < len(dnstxt); i++ {
-		fmt.Printf("DNS TXT record #%d : %s \n", i, dnstxt[i])
-		// if strings.HasPrefix(SPFrecord, "v=spf1") == true {
-		if caseInsenstiveContains(dnstxt[i], "v=spf1") == true {
-			// records.SPF = a.Txt
-			records.SPF = dnstxt[i]
-			r.Records = append(r.Records, records)
-		}
-	}
-	if len(r.Records) < 1 {
+	// Check for records
+	if len(r.SPF) < 1 {
 		r.Error = "Failed"
 		r.ErrorMessage = "No SPF records."
 		return r
 	}
 
 	return r
-
 }
 
 func caseInsenstiveContains(a, b string) bool {
