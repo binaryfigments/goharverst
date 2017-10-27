@@ -32,6 +32,7 @@ func Get(domain string, nameserver string) *Data {
 	if err != nil {
 		r.Error = "Failed"
 		r.ErrorMessage = err.Error()
+		return r
 	}
 
 	for _, ain := range in.Answer {
@@ -56,6 +57,7 @@ func Get2(domain string) *Data {
 	if err != nil {
 		r.Error = "Failed"
 		r.ErrorMessage = err.Error()
+		return r
 	}
 
 	// fmt.Println(err)
@@ -74,6 +76,7 @@ func Get2(domain string) *Data {
 	if len(r.Records) < 1 {
 		r.Error = "Failed"
 		r.ErrorMessage = "No SPF records."
+		return r
 	}
 
 	return r

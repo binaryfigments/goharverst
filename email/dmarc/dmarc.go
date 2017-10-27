@@ -2,7 +2,7 @@
 // if exists -----> DNS response: NOERROR
 // if not exists -> DNS response: NXDOMAIN
 
-package emaildkim
+package emaildmarc
 
 import (
 	"strconv"
@@ -26,7 +26,6 @@ func Get(domain string, nameserver string) *Data {
 	if err != nil {
 		r.Error = "Failed"
 		r.ErrorMessage = err.Error()
-		return r
 	}
 
 	r.Domain = "_domainkey." + domain
