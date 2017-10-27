@@ -24,11 +24,11 @@ func main() {
 	go jsonize(httpredirects.GetRedirects("http://ssl.nu"))
 	go jsonize(pkiocsp.Run(URL))
 	go jsonize(httpheaders.GetHTTPHeader("https://"+URL, Header, Method))
-	go jsonize(emailmx.Get("networking4all.com", "8.8.8.8"))
 	go jsonize(dnssoa.Get("ssl.nu", "8.8.8.8"))
 	go jsonize(pkicertificate.Get("www.ssl.nu"))
 	go jsonize(emaildkim.Get("networking4all.net", "8.8.8.8"))
 	go jsonize(emaildmarc.Get("zwdelta.nl", "8.8.8.8"))
+	go jsonize(emailmx.Get("networking4all.com", "8.8.8.8"))
 
 	testdata := emailspf.Get("ncsc.nl", "8.8.8.8")
 	json, err := json.MarshalIndent(testdata, "", "  ")

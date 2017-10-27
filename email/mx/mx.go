@@ -2,6 +2,8 @@ package emailmx
 
 import (
 	"github.com/miekg/dns"
+	"golang.org/x/net/idna"
+	"golang.org/x/net/publicsuffix"
 )
 
 // Data struct
@@ -19,6 +21,22 @@ type Records struct {
 
 func Get(domain string, nameserver string) *Data {
 	r := new(Data)
+
+	domain, err := idna.ToASCII(domain)
+	if err != nil {
+		r.Error = "Failed"
+		r.ErrorMessage = err.Error()
+		return r
+	}
+
+	// Validate
+	domain, err = publicsuffix.EffectiveTLDPlusOne(domain)
+	if err != nil {
+		r.Error = "Failed"
+		r.ErrorMessage = err.Error()
+		return r
+	}
+
 	r.Domain = domain
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(domain), dns.TypeMX)
@@ -28,6 +46,7 @@ func Get(domain string, nameserver string) *Data {
 	if err != nil {
 		r.Error = "Failed"
 		r.ErrorMessage = err.Error()
+		return r
 	}
 	for _, ain := range in.Answer {
 		if a, ok := ain.(*dns.MX); ok {
