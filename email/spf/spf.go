@@ -54,7 +54,7 @@ func Get(domain string, nameserver string) *Data {
 		}
 	default:
 		r.Error = "Failed"
-		r.ErrorMessage = "No DMARC records."
+		r.ErrorMessage = "No SPF records."
 		return r
 	}
 
