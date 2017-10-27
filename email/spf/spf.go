@@ -15,6 +15,7 @@ type Data struct {
 	ErrorMessage string   `json:"errormessage,omitempty"`
 }
 
+// Get function of this package.
 func Get(domain string, nameserver string) *Data {
 	r := new(Data)
 
