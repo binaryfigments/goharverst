@@ -42,10 +42,11 @@ func Get(domain string, nameserver string) *Data {
 	case dns.RcodeSuccess:
 		for _, ain := range in.Answer {
 			if a, ok := ain.(*dns.TXT); ok {
-
-				dmarcrecord := strings.Join(a.Txt, " ")
-				if caseInsenstiveContains(dmarcrecord, "v=spf1") == true {
-					r.SPF = append(r.SPF, dmarcrecord)
+				// SPF records zijn langer en kunnen dus in meerdere delen teruggegeven worden.
+				// strings.Join plakt ze weer aan elkaar.
+				record := strings.Join(a.Txt, "")
+				if caseInsenstiveContains(record, "v=spf1") == true {
+					r.SPF = append(r.SPF, record)
 				}
 
 			}
