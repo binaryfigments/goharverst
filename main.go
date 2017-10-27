@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/binaryfigments/goharvest/dns/soa"
+	"github.com/binaryfigments/goharvest/email/dkim"
 	"github.com/binaryfigments/goharvest/email/mx"
-	"github.com/binaryfigments/goharvest/email/spf"
 	"github.com/binaryfigments/goharvest/http/headers"
 	"github.com/binaryfigments/goharvest/http/redirects"
+	"github.com/binaryfigments/goharvest/pki/certificate"
 	"github.com/binaryfigments/goharvest/pki/ocsp"
 )
 
@@ -24,18 +25,10 @@ func main() {
 	go jsonize(emailmx.Get("networking4all.com", "8.8.8.8"))
 	go jsonize(dnssoa.Get("ssl.nu", "8.8.8.8"))
 
-	// go jsonize(pkicertificate.Get("www.ssl.nu"))
-	/*
-		certdata := pkicertificate.Get("www.ssl.nu")
-		json, err := json.MarshalIndent(certdata, "", "  ")
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Printf("%s\n", json)
-	*/
-	spfdata := emailspf.Get("networking4all.com", "8.8.8.8")
+	go jsonize(pkicertificate.Get("www.ssl.nu"))
 
-	json, err := json.MarshalIndent(spfdata, "", "  ")
+	dkimdata := emaildkim.Get("networking4all.net", "8.8.8.8")
+	json, err := json.MarshalIndent(dkimdata, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
