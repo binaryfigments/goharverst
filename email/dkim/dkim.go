@@ -34,18 +34,18 @@ func Get(domain string, nameserver string) *Data {
 	}
 
 	switch rcode := in.MsgHdr.Rcode; rcode {
-	case 0:
-		r.DomainKey = "Success" // NoError
-	case 1:
-		r.DomainKey = "FormErr" // FormErr
-	case 2:
-		r.DomainKey = "ServFail" // ServFail
-	case 3:
-		r.DomainKey = "NXDomain" // NXDomain
-	case 4:
-		r.DomainKey = "NotImp" // NotImp
-	case 5:
-		r.DomainKey = "Refused" // Refused
+	case dns.RcodeSuccess:
+		r.DomainKey = "Success" // NoError (0)
+	case dns.RcodeFormatError:
+		r.DomainKey = "FormErr" // FormErr (1)
+	case dns.RcodeServerFailure:
+		r.DomainKey = "ServFail" // ServFail (2)
+	case dns.RcodeNameError:
+		r.DomainKey = "NXDomain" // NXDomain (3)
+	case dns.RcodeNotImplemented:
+		r.DomainKey = "NotImp" // NotImp (4)
+	case dns.RcodeRefused:
+		r.DomainKey = "Refused" // Refused (5)
 	default:
 		r.DomainKey = "Code: " + strconv.Itoa(rcode)
 	}
