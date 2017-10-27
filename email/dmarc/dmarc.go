@@ -1,7 +1,3 @@
-// Do lookup _domainkey.example.org
-// if exists -----> DNS response: NOERROR
-// if not exists -> DNS response: NXDOMAIN
-
 package emaildmarc
 
 import (
@@ -19,6 +15,7 @@ type Data struct {
 	ErrorMessage string   `json:"errormessage,omitempty"`
 }
 
+// Get function of this package to get the DMARC record
 func Get(domain string, nameserver string) *Data {
 	r := new(Data)
 
