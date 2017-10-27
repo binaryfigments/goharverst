@@ -5,7 +5,7 @@
 package emaildmarc
 
 import (
-	"strconv"
+	"strings"
 
 	"github.com/miekg/dns"
 	"golang.org/x/net/publicsuffix"
@@ -13,10 +13,10 @@ import (
 
 // Data struct
 type Data struct {
-	Domain       string `json:"domain,omitempty"`
-	DomainKey    string `json:"domainkey,omitempty"`
-	Error        string `json:"error,omitempty"`
-	ErrorMessage string `json:"errormessage,omitempty"`
+	Record       string   `json:"domain,omitempty"`
+	DMARC        []string `json:"dmarc,omitempty"`
+	Error        string   `json:"error,omitempty"`
+	ErrorMessage string   `json:"errormessage,omitempty"`
 }
 
 func Get(domain string, nameserver string) *Data {
@@ -28,10 +28,10 @@ func Get(domain string, nameserver string) *Data {
 		r.ErrorMessage = err.Error()
 	}
 
-	r.Domain = "_domainkey." + domain
+	r.Record = "_dmarc." + domain
 
 	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn(r.Domain), dns.TypeA)
+	m.SetQuestion(dns.Fqdn(r.Record), dns.TypeTXT)
 	m.SetEdns0(4096, true)
 	m.MsgHdr.RecursionDesired = true
 	c := new(dns.Client)
@@ -44,20 +44,32 @@ func Get(domain string, nameserver string) *Data {
 
 	switch rcode := in.MsgHdr.Rcode; rcode {
 	case dns.RcodeSuccess:
-		r.DomainKey = "Success" // NoError (0)
-	case dns.RcodeFormatError:
-		r.DomainKey = "FormErr" // FormErr (1)
-	case dns.RcodeServerFailure:
-		r.DomainKey = "ServFail" // ServFail (2)
-	case dns.RcodeNameError:
-		r.DomainKey = "NXDomain" // NXDomain (3)
-	case dns.RcodeNotImplemented:
-		r.DomainKey = "NotImp" // NotImp (4)
-	case dns.RcodeRefused:
-		r.DomainKey = "Refused" // Refused (5)
+		for _, ain := range in.Answer {
+			if a, ok := ain.(*dns.TXT); ok {
+
+				dmarcrecord := strings.Join(a.Txt, " ")
+				if caseInsenstiveContains(dmarcrecord, "v=DMARC1") == true {
+					r.DMARC = append(r.DMARC, dmarcrecord)
+				}
+
+			}
+		}
 	default:
-		r.DomainKey = "Code: " + strconv.Itoa(rcode)
+		r.Error = "Failed"
+		r.ErrorMessage = "No DMARC records."
+		return r
+	}
+
+	// Check for records
+	if len(r.DMARC) < 1 {
+		r.Error = "Failed"
+		r.ErrorMessage = "No DMARC records."
+		return r
 	}
 
 	return r
+}
+
+func caseInsenstiveContains(a, b string) bool {
+	return strings.Contains(strings.ToUpper(a), strings.ToUpper(b))
 }

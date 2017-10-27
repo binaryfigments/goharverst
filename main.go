@@ -6,6 +6,7 @@ import (
 
 	"github.com/binaryfigments/goharvest/dns/soa"
 	"github.com/binaryfigments/goharvest/email/dkim"
+	"github.com/binaryfigments/goharvest/email/dmarc"
 	"github.com/binaryfigments/goharvest/email/mx"
 	"github.com/binaryfigments/goharvest/http/headers"
 	"github.com/binaryfigments/goharvest/http/redirects"
@@ -24,11 +25,12 @@ func main() {
 	go jsonize(httpheaders.GetHTTPHeader("https://"+URL, Header, Method))
 	go jsonize(emailmx.Get("networking4all.com", "8.8.8.8"))
 	go jsonize(dnssoa.Get("ssl.nu", "8.8.8.8"))
-
 	go jsonize(pkicertificate.Get("www.ssl.nu"))
+	go jsonize(emaildkim.Get("networking4all.net", "8.8.8.8"))
+	go jsonize(emaildmarc.Get("zwdelta.nl", "8.8.8.8"))
 
-	dkimdata := emaildkim.Get("networking4all.net", "8.8.8.8")
-	json, err := json.MarshalIndent(dkimdata, "", "  ")
+	testdata := emaildmarc.Get("ncsc.nl", "8.8.8.8")
+	json, err := json.MarshalIndent(testdata, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
