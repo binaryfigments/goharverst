@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	jsonize(httpredirects.GetRedirects("http://certificat.fr"))
+	jsonize(httpredirects.Get("http://ssl.nu"))
 }
 
 func jsonize(data interface{}) {

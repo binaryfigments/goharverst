@@ -21,7 +21,7 @@ func main() {
 	Header := "Server"
 	Method := "GET"
 
-	go jsonize(httpredirects.GetRedirects("http://ssl.nu"))
+	go jsonize(httpredirects.Get("http://ssl.nu"))
 	go jsonize(pkiocsp.Run(URL))
 	go jsonize(httpheaders.GetHTTPHeader("https://"+URL, Header, Method))
 	go jsonize(dnssoa.Get("ssl.nu", "8.8.8.8"))
