@@ -1,104 +1,146 @@
-// TODO: Need some restructureing!
-
 package pkicertificate
 
 import (
 	"crypto/tls"
+	"encoding/pem"
 	"errors"
+	"io/ioutil"
 	"net"
-
-	"golang.org/x/net/idna"
+	"net/http"
+	"net/smtp"
+	"strconv"
 
 	"github.com/zmap/zcrypto/x509"
-	"github.com/zmap/zlint"
+	"golang.org/x/net/idna"
 )
 
-func Get(fqdn string) CertWithLint {
-	raw, err := getRemoteCertificate(fqdn)
-	if err != nil {
-		// resultmessage = "Could not get remote certificate. (1)"
-		checkResult := CertWithLint{
-			Error:        "Failed",
-			ErrorMessage: err.Error(),
-		}
-		return checkResult
-	}
-	// raw := getCertificate("test2.cer")
-	parsed, err := x509.ParseCertificate(raw)
-	if err != nil {
-		checkResult := CertWithLint{
-			Error:        "Failed",
-			ErrorMessage: err.Error(),
-		}
-		return checkResult
-	}
-
-	zlintResult := zlint.LintCertificate(parsed)
-	checkResult := CertWithLint{
-		Raw:    parsed.Raw,
-		Parsed: parsed,
-		ZLint:  zlintResult,
-	}
-
-	return checkResult
+// Certificates struct
+type Certificates struct {
+	FQDN         string `json:"fqdn,omitempty"`
+	Port         int    `json:"port,omitempty"`
+	Error        string `json:"error,omitempty"`
+	ErrorMessage string `json:"errormessage,omitempty"`
+	// Certificates []*x509.Certificate      `json:"certificates,omitempty"`
+	// Parsed []*x509.ParseCertificate `json:"parsed,omitempty"`
+	Parsed []*x509.Certificate `json:"parsed,omitempty"`
+	Raw    []byte              `json:"raw,omitempty"`
 }
 
-func getRemoteCertificate(fqdn string) ([]byte, error) {
+// Get function for starting the check
+func Get(fqdn string, port int, protocol string) *Certificates {
+	r := new(Certificates)
+
+	r.FQDN = fqdn
+	r.Port = port
+
+	// Valid server name (ASCII or IDN)
 	fqdn, err := idna.ToASCII(fqdn)
 	if err != nil {
-		return nil, err
+		r.Error = "Failed"
+		r.ErrorMessage = err.Error()
+		return r
 	}
 
 	_, err = net.ResolveIPAddr("ip", fqdn)
 	if err != nil {
-		return nil, err
+		r.Error = "Failed"
+		r.ErrorMessage = err.Error()
+		return r
 	}
 
-	dialconf := &tls.Config{
-		InsecureSkipVerify: true,
-	}
+	var peerChain []*x509.Certificate
 
-	conn, err := tls.Dial("tcp", fqdn+":443", dialconf)
-	if err != nil {
-		return nil, err
-	}
+	switch protocol {
+	case "https":
+		dialconf := &tls.Config{
+			InsecureSkipVerify: true,
+		}
 
-	connState := conn.ConnectionState()
-	peerChain := connState.PeerCertificates
-	if len(peerChain) == 0 {
-		err = errors.New("invalid certificate presented")
+		fqdnport := fqdn + ":" + strconv.Itoa(port)
+
+		conn, err := tls.Dial("tcp", fqdnport, dialconf)
 		if err != nil {
-			return nil, err
+			r.Error = "Failed"
+			r.ErrorMessage = err.Error()
+			return r
+		}
+
+		connState := conn.ConnectionState()
+		peerChain := connState.PeerCertificates
+		if len(peerChain) == 0 {
+			r.Error = "Failed"
+			r.ErrorMessage = err.Error()
+			return r
+		}
+		conn.Close()
+	case "smtp":
+		tlsconfig := &tls.Config{
+			InsecureSkipVerify: true,
+			ServerName:         fqdn,
+		}
+
+		c, err := smtp.Dial(fqdn)
+		if err != nil {
+			r.Error = "Failed"
+			r.ErrorMessage = err.Error()
+			return r
+		}
+
+		c.StartTLS(tlsconfig)
+
+		cs, ok := c.TLSConnectionState()
+		if !ok {
+			r.Error = "Failed"
+			r.ErrorMessage = err.Error()
+			return r
+		}
+		c.Quit()
+
+		peerChain := cs.PeerCertificates
+		if len(peerChain) == 0 {
+			r.Error = "Failed"
+			r.ErrorMessage = err.Error()
+			return r
 		}
 	}
 
-	return peerChain[0].Raw, nil
+	// r.Certificates = peerChain
+	for _, peer := range peerChain {
+		parsed, err := x509.ParseCertificate(peer.Raw)
+		if err != nil {
+			r.Error = "Failed"
+			r.ErrorMessage = err.Error()
+			return r
+		}
+		r.Parsed = append(r.Parsed, parsed)
+	}
+
+	return r
 }
 
-// CertWithLint struct
-type CertWithLint struct {
-	CommonName    string            `json:"commonname,omitempty"`
-	Result        string            `json:"result,omitempty"`
-	ResultMessage string            `json:"resultmessage,omitempty"`
-	Parsed        *x509.Certificate `json:"parsed,omitempty"`
-	ZLint         *zlint.ResultSet  `json:"zlint,omitempty"`
-	Raw           []byte            `json:"raw,omitempty"`
-	Error         string            `json:"error,omitempty"`
-	ErrorMessage  string            `json:"errormessage,omitempty"`
+// For later use
+func parseCert(in []byte) (*x509.Certificate, error) {
+	p, _ := pem.Decode(in)
+	if p != nil {
+		if p.Type != "CERTIFICATE" {
+			return nil, errors.New("invalid certificate")
+		}
+		in = p.Bytes
+	}
+	return x509.ParseCertificate(in)
 }
 
-/* later use
-func getCertificate(file string) []byte {
-	derBytes, err := ioutil.ReadFile(file)
+func fetchRemote(url string) (*x509.Certificate, error) {
+	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return nil, err
 	}
-	// decode pem
-	block, _ := pem.Decode(derBytes)
-	if block != nil {
-		derBytes = block.Bytes
+
+	in, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
-	return derBytes
+	resp.Body.Close()
+
+	return parseCert(in)
 }
-*/
