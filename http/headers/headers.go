@@ -2,6 +2,7 @@ package httpheaders
 
 import (
 	"crypto/tls"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -87,14 +88,18 @@ func GetHTTPHeader(checkurl string, header string, method string) *HTTPHeaders {
 	return r
 }
 
-/*
+type ResponseHeaders struct {
+	Result        string
+	ResultMessage string
+	Headers       http.Header
+}
 
-func returnHeaders(fqdn string, scheme string) ResponseHeaders {
+func ReturnHeaders(fqdn string, scheme string) ResponseHeaders {
 	// headers
 	var result string
 	var resultmessage string
 
-	req, err := http.NewRequest("HEAD", scheme+"://"+fqdn, nil)
+	req, err := http.NewRequest("GET", scheme+"://"+fqdn, nil)
 	req.Header.Add("User-Agent", "ocsr.nl Checker")
 	if err != nil {
 		log.Fatalln(err)
@@ -127,4 +132,3 @@ func returnHeaders(fqdn string, scheme string) ResponseHeaders {
 	}
 	return checkResult
 }
-*/
