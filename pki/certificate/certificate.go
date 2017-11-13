@@ -16,14 +16,13 @@ import (
 
 // Certificates struct
 type Certificates struct {
-	FQDN         string `json:"fqdn,omitempty"`
-	Port         int    `json:"port,omitempty"`
-	Error        string `json:"error,omitempty"`
-	ErrorMessage string `json:"errormessage,omitempty"`
-	// Certificates []*x509.Certificate      `json:"certificates,omitempty"`
-	// Parsed []*x509.ParseCertificate `json:"parsed,omitempty"`
-	Parsed []*x509.Certificate `json:"parsed,omitempty"`
-	Raw    []byte              `json:"raw,omitempty"`
+	FQDN         string              `json:"fqdn,omitempty"`
+	Port         int                 `json:"port,omitempty"`
+	Protocol     string              `json:"protocol,omitempty"`
+	Error        string              `json:"error,omitempty"`
+	ErrorMessage string              `json:"errormessage,omitempty"`
+	Parsed       []*x509.Certificate `json:"parsed,omitempty"`
+	Raw          []byte              `json:"raw,omitempty"`
 }
 
 // Get function for starting the check
@@ -32,6 +31,7 @@ func Get(fqdn string, port int, protocol string) *Certificates {
 
 	r.FQDN = fqdn
 	r.Port = port
+	r.Protocol = protocol
 
 	// Valid server name (ASCII or IDN)
 	fqdn, err := idna.ToASCII(fqdn)
@@ -47,8 +47,6 @@ func Get(fqdn string, port int, protocol string) *Certificates {
 		r.ErrorMessage = err.Error()
 		return r
 	}
-
-	var peerChain []*x509.Certificate
 
 	switch protocol {
 	case "https":
@@ -73,13 +71,22 @@ func Get(fqdn string, port int, protocol string) *Certificates {
 			return r
 		}
 		conn.Close()
+		for _, peer := range peerChain {
+			parsed, err := x509.ParseCertificate(peer.Raw)
+			if err != nil {
+				r.Error = "Failed"
+				r.ErrorMessage = err.Error()
+				return r
+			}
+			r.Parsed = append(r.Parsed, parsed)
+		}
 	case "smtp":
 		tlsconfig := &tls.Config{
 			InsecureSkipVerify: true,
 			ServerName:         fqdn,
 		}
 
-		c, err := smtp.Dial(fqdn)
+		c, err := smtp.Dial(fqdn + ":" + strconv.Itoa(port))
 		if err != nil {
 			r.Error = "Failed"
 			r.ErrorMessage = err.Error()
@@ -102,17 +109,15 @@ func Get(fqdn string, port int, protocol string) *Certificates {
 			r.ErrorMessage = err.Error()
 			return r
 		}
-	}
-
-	// r.Certificates = peerChain
-	for _, peer := range peerChain {
-		parsed, err := x509.ParseCertificate(peer.Raw)
-		if err != nil {
-			r.Error = "Failed"
-			r.ErrorMessage = err.Error()
-			return r
+		for _, peer := range peerChain {
+			parsed, err := x509.ParseCertificate(peer.Raw)
+			if err != nil {
+				r.Error = "Failed"
+				r.ErrorMessage = err.Error()
+				return r
+			}
+			r.Parsed = append(r.Parsed, parsed)
 		}
-		r.Parsed = append(r.Parsed, parsed)
 	}
 
 	return r
