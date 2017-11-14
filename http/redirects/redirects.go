@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"golang.org/x/net/idna"
 
@@ -75,12 +76,18 @@ func Get(fqdn string, protocol string) *HTTPRedirects {
 				return http.ErrUseLastResponse
 			}}
 
+		// nextURL prefix check for incomplete
+		if caseInsenstiveContains(nextURL, "http://") == false && caseInsenstiveContains(nextURL, "https://") == false {
+			// TODO: Set warning
+			nextURL = starturl + nextURL
+		}
+
 		resp, err := client.Get(nextURL)
 
 		if err != nil {
-			// fmt.Println(err)
 			r.Error = "Failed"
 			r.ErrorMessage = err.Error()
+			return r
 		}
 
 		redirect := new(Redirects)
@@ -214,4 +221,8 @@ func GetAAAA(hostname string, nameserver string) ([]string, error) {
 	}
 
 	return record, nil
+}
+
+func caseInsenstiveContains(a, b string) bool {
+	return strings.Contains(strings.ToUpper(a), strings.ToUpper(b))
 }
