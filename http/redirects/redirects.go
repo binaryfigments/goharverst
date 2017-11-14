@@ -1,8 +1,11 @@
 package httpredirects
 
 import (
+	"net"
 	"net/http"
 	"net/url"
+
+	"golang.org/x/net/idna"
 
 	"github.com/miekg/dns"
 )
@@ -36,6 +39,21 @@ type Hosts struct {
 func Get(fqdn string, protocol string) *HTTPRedirects {
 	r := new(HTTPRedirects)
 
+	// Valid server name (ASCII or IDN)
+	fqdn, err := idna.ToASCII(fqdn)
+	if err != nil {
+		r.Error = "Failed"
+		r.ErrorMessage = err.Error()
+		return r
+	}
+
+	_, err = net.ResolveIPAddr("ip", fqdn)
+	if err != nil {
+		r.Error = "Failed"
+		r.ErrorMessage = err.Error()
+		return r
+	}
+
 	// Create urllist map
 	var urllist map[string]bool
 	urllist = make(map[string]bool)
@@ -44,8 +62,6 @@ func Get(fqdn string, protocol string) *HTTPRedirects {
 
 	r.FQDN = fqdn
 	r.Protocol = protocol
-
-	// myURL := starturl
 
 	// Start URL to urllist
 	addurl, _ := hostFromURL(starturl)
