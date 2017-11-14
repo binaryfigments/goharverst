@@ -9,7 +9,8 @@ import (
 
 // HTTPRedirects struct
 type HTTPRedirects struct {
-	URL          string       `json:"url,omitempty"`
+	FQDN         string       `json:"fqdn,omitempty"`
+	Protocol     string       `json:"protocol,omitempty"`
 	Redirects    []*Redirects `json:"redirects,omitempty"`
 	Hosts        []*Hosts     `json:"hosts,omitempty"`
 	Error        string       `json:"error,omitempty"`
@@ -32,14 +33,17 @@ type Hosts struct {
 }
 
 // Get function
-func Get(starturl string) *HTTPRedirects {
+func Get(fqdn string, protocol string) *HTTPRedirects {
 	r := new(HTTPRedirects)
 
 	// Create urllist map
 	var urllist map[string]bool
 	urllist = make(map[string]bool)
 
-	r.URL = starturl
+	starturl := protocol + "://" + fqdn
+
+	r.FQDN = fqdn
+	r.Protocol = protocol
 
 	// myURL := starturl
 
