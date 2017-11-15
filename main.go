@@ -1,48 +1,36 @@
 package main
 
+// This is an example, not for real use.
+
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 
-	"github.com/binaryfigments/goharvest/dns/soa"
-	"github.com/binaryfigments/goharvest/email/dkim"
-	"github.com/binaryfigments/goharvest/email/dmarc"
-	"github.com/binaryfigments/goharvest/email/mx"
-	"github.com/binaryfigments/goharvest/email/spf"
-	"github.com/binaryfigments/goharvest/http/headers"
-	"github.com/binaryfigments/goharvest/http/redirects"
 	"github.com/binaryfigments/goharvest/pki/certificate"
-	"github.com/binaryfigments/goharvest/pki/ocsp"
 )
 
 func main() {
+	var wg sync.WaitGroup
 
-	URL := "ssl.nu"
-	Header := "Server"
-	Method := "GET"
+	// TODO: Some testing
 
-	go jsonize(httpredirects.Get("http://" + URL))
-	go jsonize(pkiocsp.Run(URL))
-	go jsonize(httpheaders.GetHTTPHeader("https://"+URL, Header, Method))
-	go jsonize(dnssoa.Get(URL, "8.8.8.8"))
-	go jsonize(pkicertificate.Get(URL))
-	go jsonize(emaildkim.Get(URL, "8.8.8.8"))
-	go jsonize(emaildmarc.Get(URL, "8.8.8.8"))
-	go jsonize(emailmx.Get(URL, "8.8.8.8"))
+	// wg.Add(1)
+	// go jsonizewg(httpheaders.ReturnHeaders("ssl.nu", "https"), &wg)
+	// wg.Add(1)
+	// go jsonizewg(httpredirects.Get("http://ssl.nu"), &wg)
+	wg.Add(1)
+	go jsonizewg(pkicertificate.Get("www.ssl.nu", 443, "https"), &wg)
 
-	testdata := emailspf.Get(URL, "8.8.8.8")
-	json, err := json.MarshalIndent(testdata, "", "  ")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Printf("%s\n", json)
-
+	wg.Wait()
+	fmt.Println("Done")
 }
 
-func jsonize(data interface{}) {
+func jsonizewg(data interface{}, wg *sync.WaitGroup) {
 	json, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Printf("%s\n", json)
+	wg.Done()
 }
