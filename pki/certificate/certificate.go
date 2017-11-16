@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"strconv"
+	"time"
 
 	"github.com/zmap/zcrypto/x509"
 	"golang.org/x/net/idna"
@@ -50,13 +51,18 @@ func Get(fqdn string, port int, protocol string) *Certificates {
 
 	switch protocol {
 	case "https":
-		dialconf := &tls.Config{
+		fqdnport := fqdn + ":" + strconv.Itoa(port)
+
+		tlsconf := &tls.Config{
 			InsecureSkipVerify: true,
 		}
 
-		fqdnport := fqdn + ":" + strconv.Itoa(port)
+		dialconf := &net.Dialer{
+			Timeout: 10 * time.Millisecond,
+		}
 
-		conn, err := tls.Dial("tcp", fqdnport, dialconf)
+		conn, err := tls.DialWithDialer(dialconf, "tcp", fqdnport, tlsconf)
+		// conn, err := tls.Dial("tcp", fqdnport, dialconf)
 		if err != nil {
 			r.Error = "Failed"
 			r.ErrorMessage = err.Error()
