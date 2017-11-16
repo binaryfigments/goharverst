@@ -58,7 +58,7 @@ func Get(fqdn string, port int, protocol string) *Certificates {
 		}
 
 		dialconf := &net.Dialer{
-			Timeout: 10 * time.Millisecond,
+			Timeout: 1000 * time.Millisecond,
 		}
 
 		conn, err := tls.DialWithDialer(dialconf, "tcp", fqdnport, tlsconf)
