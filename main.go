@@ -11,17 +11,11 @@ import (
 )
 
 func main() {
-	var wg sync.WaitGroup
+	var wg *sync.WaitGroup
 
 	// TODO: Some testing
-
-	// wg.Add(1)
-	// go jsonizewg(httpheaders.ReturnHeaders("ssl.nu", "https"), &wg)
-	// wg.Add(1)
-	// go jsonizewg(httpredirects.Get("http://ssl.nu"), &wg)
 	wg.Add(1)
-	go jsonizewg(pkicertificate.Get("www.ssl.nu", 443, "https"), &wg)
-
+	go jsonizewg(pkicertificate.Get("www.ssl.nu", 443, "https"), wg)
 	wg.Wait()
 	fmt.Println("Done")
 }
