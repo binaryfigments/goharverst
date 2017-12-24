@@ -7,16 +7,23 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/binaryfigments/goharvest/pki/certificate"
+	"github.com/binaryfigments/goharvest/dns/axfr"
 )
 
 func main() {
-	var wg *sync.WaitGroup
-
+	// var wg *sync.WaitGroup
 	// TODO: Some testing
-	wg.Add(1)
-	go jsonizewg(pkicertificate.Get("www.ssl.nu", 443, "https"), wg)
-	wg.Wait()
+	// wg.Add(1)
+	// go jsonizewg(pkicertificate.Get("www.ssl.nu", 443, "https"), wg)
+	// wg.Wait()
+
+	axfrdata := dnsaxfr.Get("zonetransfer.me", "nsztm1.digi.ninja.")
+	json, err := json.MarshalIndent(axfrdata, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%s\n", json)
+
 	fmt.Println("Done")
 }
 
