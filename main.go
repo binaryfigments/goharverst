@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/binaryfigments/goharvest/dns/axfr"
+	"github.com/binaryfigments/goharvest/dns/dnssec"
 )
 
 func main() {
@@ -17,14 +17,12 @@ func main() {
 	// go jsonizewg(pkicertificate.Get("www.ssl.nu", 443, "https"), wg)
 	// wg.Wait()
 
-	axfrdata := dnsaxfr.Get("zonetransfer.me", "nsztm1.digi.ninja.")
-	json, err := json.MarshalIndent(axfrdata, "", "  ")
+	dnssecdata := dnsdnssec.Get("sslcertificaten.co.nl", "8.8.8.8")
+	json, err := json.MarshalIndent(dnssecdata, "", "  ")
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Printf("%s\n", json)
-
-	fmt.Println("Done")
 }
 
 func jsonizewg(data interface{}, wg *sync.WaitGroup) {
