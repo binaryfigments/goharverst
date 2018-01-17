@@ -14,14 +14,21 @@ type Data struct {
 	Answer       Answer    `json:"answer"`
 	CheckTime    time.Time `json:"time"`
 	DNSSEC       bool      `json:"dnssec"`
+	NSEC         NSEC      `json:"nsec"`
 	Error        string    `json:"error,omitempty"`
 	ErrorMessage string    `json:"errormessage,omitempty"`
 }
 
+// NSEC struct for NSEC type
+type NSEC struct {
+	Type       string          `json:"type,omitempty"`
+	NSEC       *dns.NSEC       `json:"nsec,omitempty"`
+	NSEC3      *dns.NSEC3      `json:"nsec3,omitempty"`
+	NSEC3PARAM *dns.NSEC3PARAM `json:"nsec3param,omitempty"`
+}
+
 // Answer struct the answer of the question.
 type Answer struct {
-	Registry          Registry        `json:"tld,omitempty"`
-	Nameservers       Nameservers     `json:"nameservers,omitempty"`
 	DSRecordCount     int             `json:"dsrecordcount,omitempty"`
 	DNSKEYRecordCount int             `json:"dnskeyrecordcount,omitempty"`
 	DSRecords         []*DomainDS     `json:"dsrecords,omitempty"`
@@ -34,19 +41,6 @@ type Answer struct {
 type Matching struct {
 	DS     []*DomainDS     `json:"ds,omitempty"`
 	DNSKEY []*DomainDNSKEY `json:"dnskey,omitempty"`
-}
-
-// Registry struct for information
-type Registry struct {
-	TLD   string `json:"tld,omitempty"`
-	ICANN bool   `json:"icann,omitempty"`
-}
-
-// Nameservers struct for information
-type Nameservers struct {
-	Root     []string `json:"root,omitempty"`
-	Registry []string `json:"registry,omitempty"`
-	Domain   []string `json:"domain,omitempty"`
 }
 
 // DomainDS struct
@@ -80,7 +74,7 @@ func Get(domain string, nameserver string) *Data {
 		return r
 	}
 
-	// Validate
+	// Validate domain
 	domain, err = publicsuffix.EffectiveTLDPlusOne(domain)
 	if err != nil {
 		r.Error = "Failed"
@@ -88,50 +82,10 @@ func Get(domain string, nameserver string) *Data {
 		return r
 	}
 
-	// Go check DNS!
+	tld, _ := publicsuffix.PublicSuffix(domain)
 
-	domainstate := checkDomainState(domain)
-	if domainstate != "OK" {
-
-		r.Error = "Failed"
-		r.ErrorMessage = domainstate
-		return r
-	}
-
-	tld, tldicann := publicsuffix.PublicSuffix(domain)
-	r.Answer.Registry.TLD = tld
-	r.Answer.Registry.ICANN = tldicann
-
-	// Root nameservers
-	rootNameservers, err := resolveDomainNS(".", nameserver)
-	if err != nil {
-		r.Error = "Failed"
-		r.ErrorMessage = err.Error()
-		return r
-	}
-	r.Answer.Nameservers.Root = rootNameservers
-
-	// TLD nameserver
-	registryNameservers, err := resolveDomainNS(tld, nameserver)
-	if err != nil {
-		r.Error = "Failed"
-		r.ErrorMessage = err.Error()
-		return r
-	}
-
-	r.Answer.Nameservers.Registry = registryNameservers
-	registryNameserver := registryNameservers[0]
-
-	// Domain nameservers at zone
-	domainNameservers, err := resolveDomainNS(domain, nameserver)
-	if err != nil {
-		r.Error = "Failed"
-		r.ErrorMessage = err.Error()
-		return r
-	}
-
-	r.Answer.Nameservers.Domain = domainNameservers
-	domainNameserver := domainNameservers[0]
+	registryNameserver, err := resolveOneNS(tld, nameserver)
+	domainNameserver, err := resolveOneNS(domain, nameserver)
 
 	/*
 	 * DS and DNSKEY information
@@ -147,11 +101,8 @@ func Get(domain string, nameserver string) *Data {
 	r.Answer.DSRecords = domainds
 	r.Answer.DSRecordCount = cap(domainds)
 
-	dnskey, err := resolveDomainDNSKEY(domain, domainNameserver)
-	if err != nil {
-		// log.Println("DNSKEY lookup failed: .", err)
-	}
-	// log.Println("[OK] DNSKEY record lookup done.")
+	// Wel of geen error, geen probleem.
+	dnskey, _ := resolveDomainDNSKEY(domain, domainNameserver)
 
 	r.Answer.DNSKEYRecords = dnskey
 	r.Answer.DNSKEYRecordCount = cap(r.Answer.DNSKEYRecords)
@@ -159,15 +110,30 @@ func Get(domain string, nameserver string) *Data {
 	var digest uint8
 	if cap(r.Answer.DSRecords) != 0 {
 		digest = r.Answer.DSRecords[0].DigestType
-		// log.Println("[OK] DS digest type found:", digest)
 	}
 
 	if r.Answer.DSRecordCount > 0 && r.Answer.DNSKEYRecordCount > 0 {
-		calculatedDS, err := calculateDSRecord(domain, digest, domainNameserver)
-		if err != nil {
-			// log.Println("[ERROR] DS calc failed: .", err)
-		}
+		// Wel of geen error, geen probleem.
+		calculatedDS, _ := calculateDSRecord(domain, digest, domainNameserver)
 		r.Answer.CalculatedDS = calculatedDS
+	}
+
+	nsec, _ := resolveDomainNSEC(domain, nameserver)
+	if nsec != nil {
+		r.NSEC.Type = "nsec"
+		r.NSEC.NSEC = nsec
+	}
+
+	nsec3, _ := resolveDomainNSEC3(domain, nameserver)
+	if nsec3 != nil {
+		r.NSEC.Type = "nsec3"
+		r.NSEC.NSEC3 = nsec3
+	}
+
+	nsec3param, _ := resolveDomainNSEC3PARAM(domain, nameserver)
+	if nsec3param != nil {
+		r.NSEC.Type = "nsec3param"
+		r.NSEC.NSEC3PARAM = nsec3param
 	}
 
 	if r.Answer.DSRecordCount > 0 && r.Answer.DNSKEYRecordCount > 0 {
@@ -195,6 +161,88 @@ func Get(domain string, nameserver string) *Data {
  * Used functions
  * TODO: Rewrite
  */
+
+func resolveOneNS(domain string, nameserver string) (string, error) {
+	var answer []string
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(domain), dns.TypeNS)
+	m.MsgHdr.RecursionDesired = true
+	m.SetEdns0(4096, true)
+	c := new(dns.Client)
+	in, _, err := c.Exchange(m, nameserver+":53")
+	if err != nil {
+		return "none", err
+	}
+	for _, ain := range in.Answer {
+		if a, ok := ain.(*dns.NS); ok {
+			answer = append(answer, a.Ns)
+		}
+	}
+	if len(answer) < 1 {
+		return "none", err
+	}
+	return answer[0], nil
+}
+
+func resolveDomainNSEC(domain string, nameserver string) (*dns.NSEC, error) {
+	var answer *dns.NSEC
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(domain), dns.TypeNSEC)
+	m.MsgHdr.RecursionDesired = true
+	m.SetEdns0(4096, true)
+	c := new(dns.Client)
+	in, _, err := c.Exchange(m, nameserver+":53")
+	if err != nil {
+		return nil, err
+	}
+	for _, ain := range in.Answer {
+		if a, ok := ain.(*dns.NSEC); ok {
+			answer = a
+			return answer, nil
+		}
+	}
+	return nil, nil
+}
+
+func resolveDomainNSEC3(domain string, nameserver string) (*dns.NSEC3, error) {
+	var answer *dns.NSEC3
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(domain), dns.TypeNSEC3)
+	m.MsgHdr.RecursionDesired = true
+	m.SetEdns0(4096, true)
+	c := new(dns.Client)
+	in, _, err := c.Exchange(m, nameserver+":53")
+	if err != nil {
+		return nil, err
+	}
+	for _, ain := range in.Answer {
+		if a, ok := ain.(*dns.NSEC3); ok {
+			answer = a
+			return answer, nil
+		}
+	}
+	return nil, nil
+}
+
+func resolveDomainNSEC3PARAM(domain string, nameserver string) (*dns.NSEC3PARAM, error) {
+	var answer *dns.NSEC3PARAM
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(domain), dns.TypeNSEC3PARAM)
+	m.MsgHdr.RecursionDesired = true
+	m.SetEdns0(4096, true)
+	c := new(dns.Client)
+	in, _, err := c.Exchange(m, nameserver+":53")
+	if err != nil {
+		return nil, err
+	}
+	for _, ain := range in.Answer {
+		if a, ok := ain.(*dns.NSEC3PARAM); ok {
+			answer = a
+			return answer, nil
+		}
+	}
+	return nil, nil
+}
 
 func resolveDomainNS(domain string, nameserver string) ([]string, error) {
 	var answer []string
@@ -295,34 +343,4 @@ func calculateDSRecord(domain string, digest uint8, nameserver string) ([]*Domai
 		}
 	}
 	return calculatedDS, nil
-}
-
-// checkDomainState
-func checkDomainState(domain string) string {
-	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn(domain), dns.TypeSOA)
-	m.SetEdns0(4096, true)
-	m.MsgHdr.RecursionDesired = true
-	c := new(dns.Client)
-
-Redo:
-	in, _, err := c.Exchange(m, "8.8.8.8:53")
-
-	if err == nil {
-		switch in.MsgHdr.Rcode {
-		case dns.RcodeServerFailure:
-			return "500, 502, The name server encountered an internal failure while processing this request (SERVFAIL)"
-		case dns.RcodeNameError:
-			return "500, 503, Some name that ought to exist, does not exist (NXDOMAIN)"
-		case dns.RcodeRefused:
-			return "500, 505, The name server refuses to perform the specified operation for policy or security reasons (REFUSED)"
-		default:
-			return "OK"
-		}
-	} else if err == dns.ErrTruncated {
-		c.Net = "tcp"
-		goto Redo
-	} else {
-		return "500, 501, DNS server could not be reached"
-	}
 }
